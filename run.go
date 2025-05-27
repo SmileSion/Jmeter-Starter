@@ -121,6 +121,23 @@ func getReportFolder() string {
 	return folder
 }
 
+func getRDebugFilename() string {
+	fmt.Print("请输入DEBUG日志文件名（例如 XXXXX_debug.log，回车则使用时间戳）：")
+	var name string
+	fmt.Scanln(&name)
+	name = strings.TrimSpace(name)
+
+	if name == "" {
+		timestamp := getTimestamp()
+		name = fmt.Sprintf("Debug_%s.log", timestamp)
+		fmt.Printf("已自动生成Debug日志文件名：%s\n", name)
+	} else if !strings.HasSuffix(name, ".log") {
+		name += ".log"
+	}
+
+	return name
+}
+
 // 使用XPath解析线程数（更可靠的方法）
 func parseThreadCount(jmxFile string) int {
 	data, err := ioutil.ReadFile(jmxFile)
@@ -184,8 +201,8 @@ func parseStatistics(reportFolder string) (map[string]interface{}, error) {
 	return result, nil
 }
 
-func runJMeter(jmxFile, resultFile, reportFolder string) {
-	cmd := exec.Command("jmeter", "-n", "-t", jmxFile, "-l", resultFile, "-e", "-o", reportFolder)
+func runJMeter(jmxFile, resultFile, reportFolder, debugFile string) {
+	cmd := exec.Command("jmeter", "-n", "-t", jmxFile, "-l", resultFile, "-e", "-o", reportFolder, "-j", debugFile)
 	startTime := time.Now()
 	cmdStr := strings.Join(cmd.Args, " ")
 	writeLog("开始执行命令：")
@@ -231,5 +248,6 @@ func main() {
 	jmxFile := selectJMXFile(jmxFiles)
 	resultFile := getResultFilename()
 	reportFolder := getReportFolder()
-	runJMeter(jmxFile, resultFile, reportFolder)
+	debugFile := getRDebugFilename()
+	runJMeter(jmxFile, resultFile, reportFolder, debugFile)
 }
