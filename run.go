@@ -15,10 +15,25 @@ import (
 	"github.com/antchfx/xmlquery"
 )
 
-const logFile = "pmeter.log"
+var (
+	reportDir = "Reporter"
+	jtlDir    = "Jtl"
+	debugDir  = "Debug"
+	logFile   = filepath.Join(debugDir, "pmeter.log")
+)
+
+func ensureDir(dir string) {
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			log.Fatalf("无法创建目录 %s: %v\n", dir, err)
+		}
+	}
+}
 
 func writeLog(msg string) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	ensureDir(debugDir)
+
 	file, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Println("无法打开日志文件:", err)
@@ -94,7 +109,7 @@ func getResultFilename() string {
 		name += ".jtl"
 	}
 
-	return name
+	return filepath.Join(jtlDir, name)
 }
 
 func getReportFolder() string {
@@ -109,16 +124,11 @@ func getReportFolder() string {
 		fmt.Printf("已自动生成报告文件夹：%s\n", folder)
 	}
 
-	if _, err := os.Stat(folder); os.IsNotExist(err) {
-		if err := os.Mkdir(folder, 0755); err != nil {
-			writeLog(fmt.Sprintf("创建文件夹 %s 失败: %v", folder, err))
-			fmt.Printf("无法创建文件夹 %s: %v\n", folder, err)
-			os.Exit(1)
-		}
-		fmt.Printf("已创建文件夹：%s\n", folder)
-	}
+	fullPath := filepath.Join(reportDir, folder)
+	ensureDir(fullPath)
+	fmt.Printf("报告文件夹路径：%s\n", fullPath)
 
-	return folder
+	return fullPath
 }
 
 func getRDebugFilename() string {
@@ -135,10 +145,10 @@ func getRDebugFilename() string {
 		name += ".log"
 	}
 
-	return name
+	return filepath.Join(debugDir, name)
 }
 
-// 使用XPath解析线程数（更可靠的方法）
+// 使用XPath解析线程数
 func parseThreadCount(jmxFile string) int {
 	data, err := ioutil.ReadFile(jmxFile)
 	if err != nil {
@@ -152,7 +162,6 @@ func parseThreadCount(jmxFile string) int {
 		return 0
 	}
 
-	// 查找线程数配置
 	node := xmlquery.FindOne(doc, "//intProp[@name='ThreadGroup.num_threads']")
 	if node == nil {
 		writeLog("未找到线程数配置")
@@ -225,7 +234,6 @@ func runJMeter(jmxFile, resultFile, reportFolder, debugFile string) {
 
 	writeLog(fmt.Sprintf("命令执行成功，耗时 %.2f 秒。", duration))
 
-	// 统计数据提取
 	threadCount := parseThreadCount(jmxFile)
 	stats, err := parseStatistics(reportFolder)
 
@@ -244,6 +252,10 @@ func runJMeter(jmxFile, resultFile, reportFolder, debugFile string) {
 }
 
 func main() {
+	ensureDir(reportDir)
+	ensureDir(jtlDir)
+	ensureDir(debugDir)
+
 	jmxFiles := listJMXFiles()
 	jmxFile := selectJMXFile(jmxFiles)
 	resultFile := getResultFilename()

@@ -1,7 +1,7 @@
 @echo off
 rem ------------------------- 配置部分 -------------------------
 rem 定义应用程序名称
-set APP_NAME=jmeter
+set APP_NAME=jmeter-V4
 
 rem 定义输出目录
 set OUTPUT_DIR=bin
